@@ -1,4 +1,4 @@
-from discord import Interaction, User
+from discord import Interaction, User, Message
 from .waifuinfo import get_waifu_info
 from .timely import get_timely
 from .gift import gift_letters_command
@@ -12,6 +12,7 @@ from .leaderboard import waifu_leaderboard
 from .shop import letters_shop
 from .trade import trade_letters
 from .waifutransfer import waifu_transfer
+from .picks import award_pick_if_correct_word, generate_pick_if_lucky
 
 from redbot.core import commands, app_commands, Config
 from redbot.core import checks
@@ -29,6 +30,7 @@ class Waifus(commands.Cog):
             'waifus': []
         }
         self.config.register_global(**default_global)
+        self.activePick = {}
 
     @app_commands.command(name="timely",
                           description="Claim your timely reward")
@@ -131,3 +133,15 @@ class Waifus(commands.Cog):
                    waifu: User,
                    letters: str):
         await take_letters_command(ctx, waifu, letters)
+
+    @commands.Cog.listener()
+    async def on_message(self,
+                         message: Message):
+        if message.author.bot:
+            return
+        if not message.channel.name == 'chat':
+            return
+        if self.activePick:
+            await award_pick_if_correct_word(message, self.activePick)
+        else:
+            self.activePick = await generate_pick_if_lucky(message)
