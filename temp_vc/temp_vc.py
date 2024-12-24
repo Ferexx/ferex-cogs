@@ -23,6 +23,8 @@ class TempVc(commands.Cog):
                                     member: Member,
                                     before: discord.VoiceState,
                                     after: discord.VoiceState):
+        if not before.channel:
+            return
         if len(before.channel.members) == 0 and before.channel.category.name == 'mercurial vcs':
             await before.channel.delete()
 
