@@ -1,6 +1,7 @@
-from discord import Interaction, PermissionOverwrite, Member, VoiceChannel, ButtonStyle
+from discord import Interaction, Member, VoiceChannel, ButtonStyle
 from discord.ui import View, Button
 import discord
+from .create_vc import send_vc_embed, create_vc
 
 from redbot.core import commands, Config, app_commands
 
@@ -28,44 +29,18 @@ class TempVc(commands.Cog):
         if len(before.channel.members) == 0 and before.channel.category.name == 'mercurial vcs':
             await before.channel.delete()
 
+    @commands.command()
+    async def create_vc(self,
+                        ctx):
+        await send_vc_embed(ctx)
+
     @app_commands.command(name='cv',
                           description='Create a temporary VC')
     @app_commands.describe(vc_name='The name to give to the VC')
     async def cv(self,
                  interaction: Interaction,
                  vc_name: str = None):
-        if vc_name is None:
-            vc_name = f'{interaction.user.name}\'s VC'
-
-        muted = next(filter(lambda role: (role.name == 'muted'), interaction.guild.roles))
-        admin = next(filter(lambda role: (role.name == 'admin'), interaction.guild.roles))
-        senior_mod = next(filter(lambda role: (role.name == 'senior mod'), interaction.guild.roles))
-        unverified = next(filter(lambda role: (role.name == 'unverified'), interaction.guild.roles))
-        is_donator = any(True for _ in filter(lambda role: (role.name == 'donator'), interaction.user.roles))
-        category = next(filter(lambda channel: (channel.name == 'mercurial vcs'), interaction.guild.channels))
-
-        permissions_dict = {
-            muted: PermissionOverwrite(view_channel=False),
-            unverified: PermissionOverwrite(view_channel=False),
-            admin: PermissionOverwrite(manage_channels=True),
-            senior_mod: PermissionOverwrite(manage_channels=True),
-        }
-        if is_donator:
-            permissions_dict[interaction.user] = PermissionOverwrite(manage_roles=True, manage_channels=True)
-        else:
-            permissions_dict[interaction.user] = PermissionOverwrite(manage_channels=True)
-
-        try:
-            created_channel = await interaction.guild.create_voice_channel(
-                    name=vc_name,
-                    category=category,
-                    overwrites=permissions_dict
-            )
-            if interaction.user.voice:
-                await interaction.user.move_to(created_channel)
-            await interaction.response.send_message(content='VC created', ephemeral=True)
-        except Exception:
-            await interaction.response.send_message(content='I ran into an issue making your VC, please try again later', ephemeral=True)
+        await create_vc(interaction, vc_name)
 
     @app_commands.command(name='ownership',
                           description='Transfer ownership of a temporary VC')
