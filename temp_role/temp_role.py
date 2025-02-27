@@ -32,7 +32,7 @@ class TempRole(commands.Cog):
 
     @tasks.loop(hours=24)
     async def daily_checks(self):
-        #await self.clear_inactive_members()
+        await self.clear_inactive_members()
         voice_logs = self.db.execute("SELECT * FROM voice_logs").fetchall()
         message_logs = self.db.execute("SELECT * FROM message_logs").fetchall()
 
@@ -54,8 +54,8 @@ class TempRole(commands.Cog):
                 await member.remove_roles(role)
 
         today = datetime.now().strftime("%A")
- #       self.db.execute(f"UPDATE voice_logs SET {today} = 0")
- #       self.db.execute(f"UPDATE message_logs SET {today} = 0")
+        self.db.execute(f"UPDATE voice_logs SET {today} = 0")
+        self.db.execute(f"UPDATE message_logs SET {today} = 0")
         self.db_conn.commit()
 
     async def clear_inactive_members(self):
