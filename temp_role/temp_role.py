@@ -8,7 +8,7 @@ from datetime import datetime
 from redbot.core import commands, Config
 
 
-class TempVc(commands.Cog):
+class TempRole(commands.Cog):
     """
     Commands to create and manage a temporary role
     """
@@ -32,7 +32,7 @@ class TempVc(commands.Cog):
 
     @tasks.loop(hours=24)
     async def daily_checks(self):
-        self.clear_inactive_members()
+        await self.clear_inactive_members()
         voice_logs = self.db.execute("SELECT * FROM voice_logs").fetchall()
         message_logs = self.db.execute("SELECT * FROM message_logs").fetchall()
 
@@ -49,13 +49,13 @@ class TempVc(commands.Cog):
             role = await self.bot.guilds[0].fetch_role(role_id)
 
             if total_voice_minutes >= vc_minutes_per_week and total_messages >= messages_per_week:
-                member.add_roles(role)
+                await member.add_roles(role)
             else:
-                member.remove_roles(role)
+                await member.remove_roles(role)
 
         today = datetime.now().strftime("%A")
-        self.db.execute("UPDATE voice_logs SET ? = 0", [today])
-        self.db.execute("UPDATE message_logs SET ? = 0", [today])
+        self.db.execute(f"UPDATE voice_logs SET {today} = 0")
+        self.db.execute(f"UPDATE message_logs SET {today} = 0")
         self.db_conn.commit()
 
     async def clear_inactive_members(self):
@@ -86,35 +86,39 @@ class TempVc(commands.Cog):
 
     async def stop_tracking_vc_time(self,
                                     id):
-        self.add_user_to_db(id)
+        await self.add_user_to_db(id)
 
         today = datetime.now().strftime('%A')
-        existing_time = self.db.execute("SELECT ? FROM voice_logs WHERE uid = '?'", [today, id]).fetchone()
+        existing_time = self.db.execute(f"SELECT {today} FROM voice_logs WHERE uid = ?", [id]).fetchone()[0]
         new_time = floor((datetime.now() - self.time_joined_vc[id]).total_seconds() / 60)
-        total_time = existing_time + new_time
+        total_time = int(existing_time) + new_time
 
-        self.db.execute("UPDATE voice_logs SET ? = ? WHERE uid = '?'", [today, total_time, id])
+        self.db.execute(f"UPDATE voice_logs SET {today} = ? WHERE uid = ?", [total_time, id])
         self.db_conn.commit()
 
     @commands.Cog.listener()
     async def on_message(self,
                          message: Message):
-        self.add_user_to_db(message.author.id)
+        if message.author.bot:
+            return
+        id = message.author.id
+        await self.add_user_to_db(id)
 
         today = datetime.now().strftime('%A')
-        existing_messages = self.db.execute('SELECT ? FROM message_logs WHERE uid = ?', [today, id]).fetchone()
-        total_messages = existing_messages + 1
+        existing_messages = self.db.execute(f"SELECT {today} FROM message_logs WHERE uid = ?", [id]).fetchone()[0]
+        total_messages = int(existing_messages) + 1
 
-        self.db.execute("UPDATE message_logs SET ? = ? WHERE uid = '?'", [today, total_messages, id])
+        self.db.execute(f"UPDATE message_logs SET {today} = ? WHERE uid = ?", [total_messages, id])
         self.db_conn.commit()
 
     async def add_user_to_db(self,
                              id):
-        if self.db.execute("SELECT uid FROM voice_logs WHERE uid = ?", [id]).fetchone():
+        try:
+            self.db.execute("INSERT INTO voice_logs (uid, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) VALUES (?, 0, 0, 0, 0, 0, 0, 0)", [id])
+            self.db.execute("INSERT INTO message_logs (uid, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) VALUES (?, 0, 0, 0, 0, 0, 0, 0)", [id])
+            self.db_conn.commit()
+        except:
             return
-        self.db.execute("INSERT INTO voice_logs (uid, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) VALUES (?, 0, 0, 0, 0, 0, 0, 0)", [id])
-        self.db.execute("INSERT INTO message_logs (uid, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) VALUES (?, 0, 0, 0, 0, 0, 0, 0)", [id])
-        self.db_conn.commit()
 
     @commands.group(invoke_without_command=False)
     async def temp_role(self,
