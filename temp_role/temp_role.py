@@ -32,7 +32,7 @@ class TempRole(commands.Cog):
 
     @tasks.loop(hours=24)
     async def daily_checks(self):
-        await self.clear_inactive_members()
+        #await self.clear_inactive_members()
         voice_logs = self.db.execute("SELECT * FROM voice_logs").fetchall()
         message_logs = self.db.execute("SELECT * FROM message_logs").fetchall()
 
@@ -46,7 +46,7 @@ class TempRole(commands.Cog):
             total_messages = sum(message_log[-7:])
 
             member = await self.bot.guilds[0].fetch_member(voice_log[0])
-            role = await self.bot.guilds[0].fetch_role(role_id)
+            role = self.bot.guilds[0].get_role(role_id)
 
             if total_voice_minutes >= vc_minutes_per_week and total_messages >= messages_per_week:
                 await member.add_roles(role)
@@ -54,8 +54,8 @@ class TempRole(commands.Cog):
                 await member.remove_roles(role)
 
         today = datetime.now().strftime("%A")
-        self.db.execute(f"UPDATE voice_logs SET {today} = 0")
-        self.db.execute(f"UPDATE message_logs SET {today} = 0")
+ #       self.db.execute(f"UPDATE voice_logs SET {today} = 0")
+ #       self.db.execute(f"UPDATE message_logs SET {today} = 0")
         self.db_conn.commit()
 
     async def clear_inactive_members(self):
@@ -76,17 +76,19 @@ class TempRole(commands.Cog):
                 self.stop_tracking_vc_time(member.id)
         if before.channel and after.channel:
             if len(before.channel.members) > 1 and len(after.channel.members) < 2:
-                self.stop_tracking_vc_time(member.id)
+                self.stop_tracking_vc_time(before.channel.members)
             if len(before.channel.members) < 2 and len(after.channel.members) > 1:
-                self.start_tracking_vc_time(member.id)
+                self.start_tracking_vc_time(before.channel.members)
 
     async def start_tracking_vc_time(self,
-                                     id):
-        self.time_joined_vc[id] = datetime.now()
+                                     members):
+        for member in members:
+            self.time_joined_vc[member.id] = datetime.now()
 
     async def stop_tracking_vc_time(self,
-                                    id):
-        await self.add_user_to_db(id)
+                                    members):
+        for member in members:
+            await self.add_user_to_db(member.id)
 
         today = datetime.now().strftime('%A')
         existing_time = self.db.execute(f"SELECT {today} FROM voice_logs WHERE uid = ?", [id]).fetchone()[0]
@@ -101,6 +103,7 @@ class TempRole(commands.Cog):
                          message: Message):
         if message.author.bot:
             return
+        await self.daily_checks()
         id = message.author.id
         await self.add_user_to_db(id)
 
