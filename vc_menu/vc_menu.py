@@ -35,10 +35,17 @@ class VcMenu(commands.Cog):
                                     member: Member,
                                     before: VoiceState,
                                     after: VoiceState):
+        if before.channel and (before.channel.category.name == "SFW voice" or before.channel.category.name == "NSFW voice"):
+            channel = await self.bot.fetch_channel(before.channel.id)
+            if len(channel.members) == 0:
+                await before.channel.delete()
         if not after.channel:
             self.cancel_disconnect_timer(member.id)
             return
         if not after.self_video and '📷' in after.channel.name:
+            staff_role = next(filter(lambda role: (role.name == "staff"), member.guild.roles))
+            if staff_role in member.roles:
+                return
             await self.warn_member(member.id)
             self.cam_timers[member.id] = asyncio.create_task(self.disconnect_member(member))
             return
@@ -92,7 +99,7 @@ class VcMenu(commands.Cog):
     @vc.command()
     async def menu(self,
                    ctx):
-        await ctx.channel.send(embeds=[Embed(title='Voice Chat Menu', description='Some description')],
+        await ctx.channel.send(embeds=[Embed(title='VC Menu by Ferex', description='*Create a VC simply by clicking one of the two buttons below*\n\n**SFW Voice Chat**\nThis will create a Voice Chat in the SFW Section.\n\n**NSFW Voice Chat**\nThis will create a Voice Chat in the NSFW Section.\n\n**Open Voice Chat Options for more commands.**')],
                                view=MenuView())
 
     @vc.command()
@@ -131,9 +138,10 @@ class VcMenu(commands.Cog):
         try:
             vc_channel = await ctx.guild.fetch_channel(channel_id)
             await self.config.vc_logs_channel_id.set(channel_id)
-            self.vc_logs_channel = await vc_channel
+            self.vc_logs_channel = vc_channel
             await ctx.send('VC Logs channel set')
-        except:
+        except Exception as e:
+            print(e)
             await ctx.send('That channel ID does not match any channel')
 
     @app_commands.command(name='tempban',

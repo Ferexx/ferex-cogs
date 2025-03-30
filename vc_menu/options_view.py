@@ -11,18 +11,27 @@ class OptionsView(View):
     async def change_name(self,
                           interaction: Interaction,
                           button: Button):
+        if not interaction.user.voice:
+            await interaction.response.send_message(content='You are not connected to a voice channel',
+                                                    ephemeral=True)
         await interaction.response.send_modal(NameChangeModal())
 
     @discord.ui.button(label='Change Voice Limit', row=0)
     async def change_limit(self,
                            interaction: Interaction,
                            button: Button):
+        if not interaction.user.voice:
+            await interaction.response.send_message(content='You are not connected to a voice channel',
+                                                    ephemeral=True)
         await interaction.response.send_modal(LimitChangeModal())
 
     @discord.ui.button(label='Toggle Cam Only', row=1)
     async def change_cam_only(self,
                               interaction: Interaction,
                               button: Button):
+        if not interaction.user.voice:
+            await interaction.response.send_message(content='You are not connected to a voice channel',
+                                                    ephemeral=True)
         voice_channel = interaction.user.voice.channel
         if '📷' in voice_channel.name:
             await voice_channel.edit(name=voice_channel.name[4:])
@@ -36,6 +45,9 @@ class OptionsView(View):
     async def change_sfw(self,
                          interaction: Interaction,
                          button: Button):
+        if not interaction.user.voice:
+            await interaction.response.send_message(content='You are not connected to a voice channel',
+                                                    ephemeral=True)
         voice_channel = interaction.user.voice.channel
         sfw_category = await interaction.guild.fetch_channel(utils.sfw_id)
         nsfw_category = await interaction.guild.fetch_channel(utils.nsfw_id)

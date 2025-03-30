@@ -41,11 +41,11 @@ class CreationModal(Modal, title='Create VC'):
 
 
 def default_permissions(interaction: Interaction):
-    muted = next(filter(lambda role: (role.name == 'muted'), interaction.guild.roles))
+    muted = next(filter(lambda role: (role.name == 'shame'), interaction.guild.roles))
     admin = next(filter(lambda role: (role.name == 'admin'), interaction.guild.roles))
-    senior_mod = next(filter(lambda role: (role.name == 'senior mod'), interaction.guild.roles))
+    senior_mod = next(filter(lambda role: (role.name == 'mod'), interaction.guild.roles))
     unverified = next(filter(lambda role: (role.name == 'unverified'), interaction.guild.roles))
-    is_donator = any(True for _ in filter(lambda role: (role.name == 'donator'), interaction.user.roles))
+    is_donator = any(True for _ in filter(lambda role: (role.name == 'cool friend'), interaction.user.roles))
 
     permissions_dict = {
         muted: PermissionOverwrite(view_channel=False),

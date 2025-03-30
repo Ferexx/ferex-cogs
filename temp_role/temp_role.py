@@ -25,10 +25,14 @@ class TempRole(commands.Cog):
         self.config.register_global(**default_global)
         self.db_conn = sqlite3.connect(os.path.dirname(os.path.realpath(__file__)) + '/data.sqlite')
         self.db = self.db_conn.cursor()
+        self.db.execute("CREATE TABLE IF NOT EXISTS voice_logs (uid TEXT NOT NULL PRIMARY KEY,Monday INTEGER,Tuesday INTEGER,Wednesday INTEGER,Thursday INTEGER,Friday INTEGER,Saturday INTEGER,Sunday INTEGER)")
+        self.db.execute("CREATE TABLE IF NOT EXISTS message_logs (uid TEXT NOT NULL PRIMARY KEY,Monday INTEGER,Tuesday INTEGER,Wednesday INTEGER,Thursday INTEGER,Friday INTEGER,Saturday INTEGER,Sunday INTEGER)")
+        self.db_conn.commit()
         self.daily_checks.start()
 
     def cog_unload(self):
         self.daily_checks.cancel()
+        self.db_conn.close()
 
     @tasks.loop(hours=24)
     async def daily_checks(self):
@@ -48,7 +52,7 @@ class TempRole(commands.Cog):
             member = await self.bot.guilds[0].fetch_member(voice_log[0])
             role = self.bot.guilds[0].get_role(role_id)
 
-            if total_voice_minutes >= vc_minutes_per_week and total_messages >= messages_per_week:
+            if total_voice_minutes >= vc_minutes_per_week or total_messages >= messages_per_week:
                 await member.add_roles(role)
             else:
                 await member.remove_roles(role)
@@ -69,16 +73,20 @@ class TempRole(commands.Cog):
                                     before: VoiceState,
                                     after: VoiceState):
         if not before.channel and after.channel:
-            if len(before.channel.members) > 1:
-                self.start_tracking_vc_time(member.id)
+            if len(after.channel.members) == 2:
+                await self.start_tracking_vc_time(after.channel.members)
+            elif len(after.channel.members) > 1:
+                await self.start_tracking_vc_time([member])
         if before.channel and not after.channel:
-            if len(before.channel.members) > 1:
-                self.stop_tracking_vc_time(member.id)
+            if len(before.channel.members) == 2:
+                await self.stop_tracking_vc_time(before.channel.members)
+            elif len(before.channel.members) > 1:
+                await self.stop_tracking_vc_time([member])
         if before.channel and after.channel:
             if len(before.channel.members) > 1 and len(after.channel.members) < 2:
-                self.stop_tracking_vc_time(before.channel.members)
+                await self.stop_tracking_vc_time(before.channel.members)
             if len(before.channel.members) < 2 and len(after.channel.members) > 1:
-                self.start_tracking_vc_time(before.channel.members)
+                await self.start_tracking_vc_time(before.channel.members)
 
     async def start_tracking_vc_time(self,
                                      members):
@@ -88,22 +96,23 @@ class TempRole(commands.Cog):
     async def stop_tracking_vc_time(self,
                                     members):
         for member in members:
-            await self.add_user_to_db(member.id)
+            id = member.id
+            await self.add_user_to_db(id)
+            today = datetime.now().strftime('%A')
+            existing_time = self.db.execute(f"SELECT {today} FROM voice_logs WHERE uid = ?", [id]).fetchone()[0]
+            new_time = floor((datetime.now() - self.time_joined_vc[id]).total_seconds() / 60)
+            total_time = int(existing_time) + new_time
 
-        today = datetime.now().strftime('%A')
-        existing_time = self.db.execute(f"SELECT {today} FROM voice_logs WHERE uid = ?", [id]).fetchone()[0]
-        new_time = floor((datetime.now() - self.time_joined_vc[id]).total_seconds() / 60)
-        total_time = int(existing_time) + new_time
-
-        self.db.execute(f"UPDATE voice_logs SET {today} = ? WHERE uid = ?", [total_time, id])
-        self.db_conn.commit()
+            self.db.execute(f"UPDATE voice_logs SET {today} = ? WHERE uid = ?", [total_time, id])
+            self.db_conn.commit()
 
     @commands.Cog.listener()
     async def on_message(self,
                          message: Message):
         if message.author.bot:
             return
-        await self.daily_checks()
+        if message.channel.name != "sfw-chat":
+            return
         id = message.author.id
         await self.add_user_to_db(id)
 
@@ -120,7 +129,7 @@ class TempRole(commands.Cog):
             self.db.execute("INSERT INTO voice_logs (uid, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) VALUES (?, 0, 0, 0, 0, 0, 0, 0)", [id])
             self.db.execute("INSERT INTO message_logs (uid, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday) VALUES (?, 0, 0, 0, 0, 0, 0, 0)", [id])
             self.db_conn.commit()
-        except:
+        except Exception as e:
             return
 
     @commands.group(invoke_without_command=False)

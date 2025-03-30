@@ -7,31 +7,35 @@ from .utils import can_manage_vc
 
 
 class MenuView(View):
-    @discord.ui.button(label='Create SFW Voice Chat', style=ButtonStyle.success, row=0)
+    def __init__(self):
+        super().__init__(timeout=None)
+
+
+    @discord.ui.button(label='Create SFW Voice Chat', style=ButtonStyle.success, row=0, custom_id='sfw_voice_chat_creation')
     async def sfw_voice(self,
                         interaction: Interaction,
                         button: Button):
         await interaction.response.send_modal(CreationModal(title='SFW Voice Chat Creation'))
 
-    @discord.ui.button(label='Create NSFW Voice Chat', style=ButtonStyle.success, row=0)
+    @discord.ui.button(label='Create NSFW Voice Chat', style=ButtonStyle.success, row=0, custom_id='nsfw_voice_chat_creation')
     async def nsfw_voice(self,
                          interaction: Interaction,
                          button: Button):
         await interaction.response.send_modal(CreationModal(title='NSFW Voice Chat Creation'))
 
-    @discord.ui.button(label='Create SFW Cam Only Voice Chat', style=ButtonStyle.success, row=1)
+    @discord.ui.button(label='Create SFW Cam Only Voice Chat', style=ButtonStyle.success, row=1, custom_id='sfw_cam_chat_creation')
     async def sfw_cam(self,
                       interaction: Interaction,
                       button: Button):
         await interaction.response.send_modal(CreationModal(title='SFW Cam Chat Creation'))
 
-    @discord.ui.button(label='Create NSFW Cam Only Voice Chat', style=ButtonStyle.success, row=1)
+    @discord.ui.button(label='Create NSFW Cam Only Voice Chat', style=ButtonStyle.success, row=1, custom_id='nsfw_cam_chat_creation')
     async def nsfw_cam(self,
                        interaction: Interaction,
                        button: Button):
         await interaction.response.send_modal(CreationModal(title='NSFW Cam Chat Creation'))
 
-    @discord.ui.button(label='Open Voice Chat Options', style=ButtonStyle.secondary, row=2)
+    @discord.ui.button(label='Open Voice Chat Options', style=ButtonStyle.secondary, row=2, custom_id='vc_options')
     async def options(self,
                       interaction: Interaction,
                       button: Button):
@@ -44,7 +48,7 @@ class MenuView(View):
                                                 view=OptionsView(),
                                                 ephemeral=True)
 
-    @discord.ui.button(label='Delete current Voice Chat', style=ButtonStyle.danger, row=3)
+    @discord.ui.button(label='Delete current Voice Chat', style=ButtonStyle.danger, row=3, custom_id='vc_delete')
     async def delete(self,
                      interaction: Interaction,
                      button: Button):
